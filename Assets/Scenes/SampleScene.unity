@@ -745,7 +745,7 @@ GameObject:
   - component: {fileID: 797924937}
   - component: {fileID: 797924936}
   m_Layer: 0
-  m_Name: Ground (2)
+  m_Name: Wall (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1029,7 +1029,7 @@ Rigidbody:
   m_GameObject: {fileID: 1224942201}
   serializedVersion: 4
   m_Mass: 1
-  m_Drag: 3
+  m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
@@ -1075,7 +1075,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b93bc31feeedc2b4da67a427871891c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gravityMultiplier: 3
 --- !u!1 &1411878043
 GameObject:
   m_ObjectHideFlags: 0
@@ -1089,7 +1088,7 @@ GameObject:
   - component: {fileID: 1411878045}
   - component: {fileID: 1411878044}
   m_Layer: 0
-  m_Name: Ground (3)
+  m_Name: Wall (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1197,7 +1196,7 @@ GameObject:
   - component: {fileID: 1491426178}
   - component: {fileID: 1491426177}
   m_Layer: 0
-  m_Name: Ground (4)
+  m_Name: Wall (4)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1305,7 +1304,7 @@ GameObject:
   - component: {fileID: 1498113268}
   - component: {fileID: 1498113267}
   m_Layer: 0
-  m_Name: Ground (1)
+  m_Name: Wall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1585,6 +1584,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1781170701092027144, guid: 38157026e70d97c458cae98fc210304c, type: 3}
     - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
+      propertyPath: throwSpeed
+      value: 11
+      objectReference: {fileID: 0}
+    - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
       propertyPath: torsoPrefab
       value: 
       objectReference: {fileID: 5390257008426651648, guid: 60a344c76f9ad3747b6afc32ce16d8d3, type: 3}
@@ -1608,6 +1611,10 @@ PrefabInstance:
       propertyPath: wholeHoldPoint
       value: 
       objectReference: {fileID: 8589788133429999158}
+    - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
+      propertyPath: throwUpVelocity
+      value: 16
+      objectReference: {fileID: 0}
     - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
       propertyPath: dropIgnoreSeconds
       value: 1

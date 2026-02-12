@@ -44,6 +44,12 @@ public class SplitBodyManager : MonoBehaviour
     [SerializeField] private float placementSkin = 0.02f;   // tiny extra clearance
     [SerializeField] private float groundClearance = 0.05f; // same idea as your +0.05f
 
+    [Header("Throw")]
+    [SerializeField] private float throwSpeed = 12f;        // forward velocity
+    [SerializeField] private float throwUpVelocity = 6f;     // upward velocity
+    [SerializeField] private float throwIgnoreSeconds = 0.25f; // ignore self-collision right after throw
+    [SerializeField] private float throwSpawnForward = 1.0f;  // spawn in front of you
+    [SerializeField] private float throwSpawnUp = 0.8f;       // spawn slightly up
 
 
     private ObjectGrabbable heldGrabbable;
@@ -82,6 +88,12 @@ public class SplitBodyManager : MonoBehaviour
         if (IsCarryingLegs) return;
         if (!isSplit || torsoInstance == null || legsInstance == null) return;
         TryRecombine();
+    }
+
+    private void OnThrow()
+    {
+        if (heldGrabbable == null) return;
+        ThrowHeld();
     }
 
     private void Awake()
@@ -311,6 +323,16 @@ public class SplitBodyManager : MonoBehaviour
         if (Physics.Raycast(rayStart, Vector3.down, out var hit, dropGroundRayDistance, groundMask, QueryTriggerInteraction.Ignore))
             desired.y = hit.point.y + 0.05f;
 
+        desired = SnapToGround(desired);
+
+        // If the object has a CapsuleCollider, use capsule-safe placement too
+        CapsuleCollider dropCapsule = heldGrabbable.GetComponent<CapsuleCollider>();
+        if (dropCapsule != null)
+        {
+            TryFindClearCapsulePosition(dropCapsule, desired, holdOwner.rotation, out desired);
+        }
+
+
         // Temporarily ignore collisions between torso + legs on re-enable
         if (isSplit && torsoInstance != null && heldGrabbable != null)
             IgnoreCollisionTemporarily(torsoInstance.gameObject, heldGrabbable.gameObject, dropIgnoreSeconds);
@@ -347,6 +369,78 @@ public class SplitBodyManager : MonoBehaviour
         heldGrabbable = null;
         heldRb = null;
     }
+
+    private void ThrowHeld()
+    {
+        if (heldGrabbable == null) return;
+
+        Transform thrower = isSplit && activeHalf != null ? activeHalf.transform : transform;
+
+        // Yaw-only forward so arc is consistent in a platformer (no pitching up/down changes range)
+        Vector3 forward = thrower.forward;
+        forward.y = 0f;
+        forward = forward.sqrMagnitude < 0.0001f ? Vector3.forward : forward.normalized;
+
+        Transform hold = CurrentHoldPoint;
+        Vector3 spawnPos = hold != null ? hold.position : (thrower.position + Vector3.up * 1f);
+        Quaternion spawnRot = hold != null ? hold.rotation : thrower.rotation;
+
+
+        // Make sure the throw spawn isn't inside a wall (optional but recommended)
+        CapsuleCollider dropCapsule = heldGrabbable.GetComponent<CapsuleCollider>();
+        if (dropCapsule != null)
+        {
+            spawnPos = SnapToGround(spawnPos); // optional: remove if you want mid-air throws
+            TryFindClearCapsulePosition(dropCapsule, spawnPos, thrower.rotation, out spawnPos);
+        }
+
+        // Move it to spawn point while still "held/frozen"
+        if (heldRb != null)
+        {
+            heldRb.isKinematic = true;
+            heldRb.detectCollisions = false;
+            heldRb.position = spawnPos;
+            heldRb.rotation = thrower.rotation;
+            heldRb.linearVelocity = Vector3.zero;
+            heldRb.angularVelocity = Vector3.zero;
+        }
+        else
+        {
+            heldGrabbable.transform.position = spawnPos;
+            heldGrabbable.transform.rotation = thrower.rotation;
+        }
+
+        // Drop enables physics + colliders again
+        heldGrabbable.Drop();
+
+        // Re-enable collision (Drop does it too, but this keeps it bulletproof)
+        if (heldRb != null)
+            heldRb.detectCollisions = true;
+
+        // Ignore collisions with the thrower briefly so it doesn't smack you instantly
+        IgnoreCollisionTemporarily(thrower.gameObject, heldGrabbable.gameObject, throwIgnoreSeconds);
+
+        // Apply fixed arc velocity
+        if (heldRb != null)
+        {
+            Vector3 v = forward * throwSpeed + Vector3.up * throwUpVelocity;
+            heldRb.linearVelocity = v;
+        }
+
+        // Re-apply who is active (prevents thrown half from stealing camera control)
+        if (isSplit && torsoInstance != null && legsInstance != null && activeHalf != null)
+        {
+            torsoInstance.SetActiveControl(activeHalf == torsoInstance);
+            legsInstance.SetActiveControl(activeHalf == legsInstance);
+
+            activeHalf.movement.SetCursorLocked(true);
+            activeHalf.movement.SyncLookFromTarget();
+        }
+
+        heldGrabbable = null;
+        heldRb = null;
+    }
+
 
 
     private void IgnoreCollisionTemporarily(GameObject a, GameObject b, float seconds)

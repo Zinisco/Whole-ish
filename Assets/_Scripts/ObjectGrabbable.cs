@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class ObjectGrabbable : MonoBehaviour
 {
-    [SerializeField] private float gravityMultiplier = 3f;
+    private float gravityMultiplier = 3f;
 
     private Rigidbody objectRigidbody;
     private Transform objectGrabPointTransform;
@@ -70,6 +70,12 @@ public class ObjectGrabbable : MonoBehaviour
         if (bodyHalfCargo != null)
             bodyHalfCargo.Half.SetHeldState(false);
     }
+
+    public void SetGravityMultiplier(float value)
+    {
+        gravityMultiplier = value;
+    }
+
 
     private void LateUpdate()
     {
