@@ -197,7 +197,7 @@ MonoBehaviour:
   cinemachineCameraTarget: {fileID: 4643713959438015313}
   topClamp: 70
   bottomClamp: -30
-  moveSpeed: 1
+  moveSpeed: 6
   mouseLookSensitivity: 1
   stickLookDegreesPerSecond: 180
   gravityValue: -30

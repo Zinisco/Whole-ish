@@ -162,13 +162,28 @@ public class SplitBodyManager : MonoBehaviour
         legsInstance.SetActiveControl(activeHalf == legsInstance);
 
         activeHalf.movement.SetCursorLocked(true);
-
         EnsureCameraTargetAssigned();
 
-        // snap follow point immediately
+        // --- warp-safe snap ---
         if (cinemachineCameraTarget != null)
-            cinemachineCameraTarget.position = CurrentFollowPoint.position;
+        {
+            Vector3 oldPos = cinemachineCameraTarget.position;
+            Vector3 newPos = CurrentFollowPoint.position;
 
+            cinemachineCameraTarget.position = newPos;
+
+            // IMPORTANT: tell Cinemachine its target "teleported"
+            if (vcam != null)
+            {
+                Vector3 delta = newPos - oldPos;
+
+                // Cinemachine 2 has OnTargetObjectWarped. Cinemachine 3 may too.
+                // If this doesn't compile, tell me the exact error and I'll match your version’s call.
+                vcam.OnTargetObjectWarped(cinemachineCameraTarget, delta);
+            }
+        }
+
+        // sync yaw/pitch so mouse look doesn't jump
         activeHalf.movement.SyncLookFromTarget();
     }
 
@@ -390,8 +405,7 @@ public class SplitBodyManager : MonoBehaviour
         CapsuleCollider dropCapsule = heldGrabbable.GetComponent<CapsuleCollider>();
         if (dropCapsule != null)
         {
-            spawnPos = SnapToGround(spawnPos); // optional: remove if you want mid-air throws
-            TryFindClearCapsulePosition(dropCapsule, spawnPos, thrower.rotation, out spawnPos);
+            TryFindClearCapsulePosition(dropCapsule, spawnPos, spawnRot, out spawnPos);
         }
 
         // Move it to spawn point while still "held/frozen"
@@ -400,14 +414,14 @@ public class SplitBodyManager : MonoBehaviour
             heldRb.isKinematic = true;
             heldRb.detectCollisions = false;
             heldRb.position = spawnPos;
-            heldRb.rotation = thrower.rotation;
+            heldRb.rotation = spawnRot;
             heldRb.linearVelocity = Vector3.zero;
             heldRb.angularVelocity = Vector3.zero;
         }
         else
         {
             heldGrabbable.transform.position = spawnPos;
-            heldGrabbable.transform.rotation = thrower.rotation;
+            heldGrabbable.transform.rotation = spawnRot;
         }
 
         // Drop enables physics + colliders again

@@ -39,33 +39,35 @@ public class BodyHalf : MonoBehaviour
 
         if (active)
         {
-            // PLAYER MODE
             if (cc) cc.enabled = true;
 
             if (rb)
             {
+                rb.constraints = RigidbodyConstraints.FreezeRotation; // or None if you want full control
                 rb.isKinematic = true;
                 rb.useGravity = false;
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
 
-            if (physicsCollider) physicsCollider.enabled = false; // avoid double collision with CC
+            if (physicsCollider) physicsCollider.enabled = false;
         }
         else
         {
-            // CARGO MODE (on ground)
             if (cc) cc.enabled = false;
 
             if (rb)
             {
+                // cargo: allow yaw, but prevent tipping
+                rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
                 rb.isKinematic = false;
                 rb.useGravity = true;
             }
 
-            if (physicsCollider) physicsCollider.enabled = true; // REQUIRED so it doesn't fall through
+            if (physicsCollider) physicsCollider.enabled = true;
         }
     }
+
 
     public void SetHeldState(bool held)
     {
