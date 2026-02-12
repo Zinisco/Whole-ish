@@ -19,8 +19,8 @@ public class SplitBodyManager : MonoBehaviour
     [SerializeField] private Transform cinemachineCameraTarget;
 
     [Header("Split Settings")]
-    [SerializeField] private Vector3 torsoSpawnOffset = new Vector3(0.2f, 0f, 0f);
-    [SerializeField] private Vector3 legsSpawnOffset = new Vector3(-0.2f, 0f, 0f);
+    [SerializeField] private Vector3 torsoSpawnOffset = new Vector3(0.5f, 0f, 0f);
+    [SerializeField] private Vector3 legsSpawnOffset = new Vector3(-0.5f, 0f, 0f);
 
     [Header("Recombine")]
     [SerializeField] private float recombineDistance = 1.2f;
@@ -269,13 +269,23 @@ public class SplitBodyManager : MonoBehaviour
         Transform holdOwner = isSplit && activeHalf != null ? activeHalf.transform : transform;
 
         // choose a safe desired position
-        Vector3 right = holdOwner.right;
-        Vector3 forward = holdOwner.forward;
+        float sideSign = 1f;
+
+        // If dropping legs, choose the side away from torso
+        if (isSplit && torsoInstance != null && heldGrabbable != null &&
+            heldGrabbable.TryGetComponent<BodyHalfCargo>(out var cargo) &&
+            cargo.Half.type == HalfType.Legs)
+        {
+            Vector3 toTorso = torsoInstance.transform.position - holdOwner.position;
+            toTorso.y = 0f;
+            sideSign = Vector3.Dot(holdOwner.right, toTorso) > 0f ? -1f : 1f;
+        }
 
         Vector3 desired = holdOwner.position
-                        + forward * dropForwardOffset.z
-                        + right * dropSideOffset
+                        + holdOwner.forward * dropForwardOffset.z
+                        + holdOwner.right * (dropSideOffset * sideSign)
                         + Vector3.up * dropUpOffset;
+
 
         // snap to ground
         Vector3 rayStart = desired + Vector3.up * dropGroundRayHeight;

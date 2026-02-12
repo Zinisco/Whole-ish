@@ -1185,9 +1185,17 @@ PrefabInstance:
       value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
+      propertyPath: legsSpawnOffset.x
+      value: -0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
       propertyPath: wholeCameraTarget
       value: 
       objectReference: {fileID: 1224935491}
+    - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
+      propertyPath: torsoSpawnOffset.x
+      value: 0.6
+      objectReference: {fileID: 0}
     - target: {fileID: 8145489757935104491, guid: 3dbfa47ad7f5b44449de4752206ac27f, type: 3}
       propertyPath: dropForwardOffset.z
       value: 1
