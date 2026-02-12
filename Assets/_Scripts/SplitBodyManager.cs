@@ -37,6 +37,14 @@ public class SplitBodyManager : MonoBehaviour
     [SerializeField] private LayerMask groundMask;
     [SerializeField] private float dropIgnoreSeconds = 0.25f;
 
+    [Header("Safe Placement (Walls/Props)")]
+    [SerializeField] private LayerMask obstructionMask;     // walls, props, environment (NOT triggers)
+    [SerializeField] private int maxPlacementAttempts = 18; // how many positions to try
+    [SerializeField] private float placementStep = 0.35f;   // how far each attempt moves out
+    [SerializeField] private float placementSkin = 0.02f;   // tiny extra clearance
+    [SerializeField] private float groundClearance = 0.05f; // same idea as your +0.05f
+
+
 
     private ObjectGrabbable heldGrabbable;
     private Rigidbody heldRb;
@@ -110,8 +118,19 @@ public class SplitBodyManager : MonoBehaviour
         Vector3 basePos = transform.position;
         Quaternion baseRot = transform.rotation;
 
-        torsoInstance = Instantiate(torsoPrefab, basePos + torsoSpawnOffset, baseRot);
-        legsInstance = Instantiate(legsPrefab, basePos + legsSpawnOffset, baseRot);
+        Vector3 torsoDesired = SnapToGround(basePos + torsoSpawnOffset);
+        Vector3 legsDesired = SnapToGround(basePos + legsSpawnOffset);
+
+        // Probe using the prefabs' CapsuleCollider (physics collider)
+        CapsuleCollider torsoCapsule = torsoPrefab.GetComponent<CapsuleCollider>();
+        CapsuleCollider legsCapsule = legsPrefab.GetComponent<CapsuleCollider>();
+
+        TryFindClearCapsulePosition(torsoCapsule, torsoDesired, baseRot, out Vector3 torsoSpawn);
+        TryFindClearCapsulePosition(legsCapsule, legsDesired, baseRot, out Vector3 legsSpawn);
+
+        torsoInstance = Instantiate(torsoPrefab, torsoSpawn, baseRot);
+        legsInstance = Instantiate(legsPrefab, legsSpawn, baseRot);
+
 
         // Share same camera target for Look()
         torsoInstance.movement.SetCameraTarget(cinemachineCameraTarget);
@@ -387,6 +406,99 @@ public class SplitBodyManager : MonoBehaviour
 
             return wholeBodyCameraTarget != null ? wholeBodyCameraTarget : transform;
         }
+    }
+
+    private bool TryFindClearCapsulePosition(
+    CapsuleCollider capsule,
+    Vector3 desiredPos,
+    Quaternion desiredRot,
+    out Vector3 clearPos)
+    {
+        clearPos = desiredPos;
+        if (capsule == null) return true; // nothing to test
+
+        // We’ll test positions in a small spiral around the desired spot
+        for (int i = 0; i < maxPlacementAttempts; i++)
+        {
+            Vector3 candidate = desiredPos;
+
+            if (i > 0)
+            {
+                // Spiral-ish offsets: right/forward combos
+                float ring = Mathf.Ceil(i / 6f);
+                int slot = (i - 1) % 6;
+
+                Vector3 dir = slot switch
+                {
+                    0 => Vector3.right,
+                    1 => Vector3.left,
+                    2 => Vector3.forward,
+                    3 => Vector3.back,
+                    4 => (Vector3.right + Vector3.forward).normalized,
+                    _ => (Vector3.left + Vector3.forward).normalized,
+                };
+
+                candidate += dir * (ring * placementStep);
+            }
+
+            if (!IsCapsuleOverlapping(capsule, candidate, desiredRot))
+            {
+                clearPos = candidate;
+                return true;
+            }
+        }
+
+        // If we couldn’t find a perfect spot, keep the desired (better than teleporting far away)
+        clearPos = desiredPos;
+        return false;
+    }
+
+    private bool IsCapsuleOverlapping(CapsuleCollider capsule, Vector3 worldPos, Quaternion worldRot)
+    {
+        GetCapsuleWorldPoints(capsule, worldPos, worldRot, out Vector3 p0, out Vector3 p1, out float r);
+
+        // Slightly inflate so we don’t start interpenetrating
+        r += placementSkin;
+
+        // Ignore triggers; we only care about solid stuff
+        return Physics.CheckCapsule(p0, p1, r, obstructionMask, QueryTriggerInteraction.Ignore);
+    }
+
+    private void GetCapsuleWorldPoints(
+        CapsuleCollider capsule,
+        Vector3 rootWorldPos,
+        Quaternion rootWorldRot,
+        out Vector3 p0,
+        out Vector3 p1,
+        out float radius)
+    {
+        // CapsuleCollider is on the same object as the rigidbody (your physics collider)
+        // We treat "rootWorldPos/rootWorldRot" as the transform pose we are testing.
+        Vector3 center = rootWorldPos + (rootWorldRot * capsule.center);
+
+        float lossyScaleX = Mathf.Abs(capsule.transform.lossyScale.x);
+        float lossyScaleZ = Mathf.Abs(capsule.transform.lossyScale.z);
+        float lossyScaleY = Mathf.Abs(capsule.transform.lossyScale.y);
+
+        // radius scales by X/Z (capsule is symmetric)
+        radius = capsule.radius * Mathf.Max(lossyScaleX, lossyScaleZ);
+
+        float height = Mathf.Max(capsule.height * lossyScaleY, radius * 2f);
+        float half = (height * 0.5f) - radius;
+
+        Vector3 up = rootWorldRot * Vector3.up;
+
+        p0 = center + up * half;
+        p1 = center - up * half;
+    }
+
+    private Vector3 SnapToGround(Vector3 pos)
+    {
+        Vector3 rayStart = pos + Vector3.up * dropGroundRayHeight;
+        if (Physics.Raycast(rayStart, Vector3.down, out var hit, dropGroundRayDistance, groundMask, QueryTriggerInteraction.Ignore))
+            pos.y = hit.point.y + groundClearance;
+
+        return pos;
     }
 
 
