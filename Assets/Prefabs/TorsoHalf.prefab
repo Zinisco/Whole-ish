@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2363762400901285227}
   - component: {fileID: 6333686275965111613}
   - component: {fileID: 1982406427751869474}
-  m_Layer: 3
+  m_Layer: 7
   m_Name: Cube (1)
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -86,6 +86,37 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &1268281025255975049
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9140656876775367235}
+  m_Layer: 7
+  m_Name: HoldPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9140656876775367235
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1268281025255975049}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.757, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4607837349042273813}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1991478928909361617
 GameObject:
   m_ObjectHideFlags: 0
@@ -98,7 +129,9 @@ GameObject:
   - component: {fileID: 6263623574870782097}
   - component: {fileID: 2859052393326274166}
   - component: {fileID: 5390257008426651648}
-  m_Layer: 0
+  - component: {fileID: 5898813734872821476}
+  - component: {fileID: 2256347455188751589}
+  m_Layer: 7
   m_Name: TorsoHalf
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -120,6 +153,7 @@ Transform:
   m_Children:
   - {fileID: 4609879842111675236}
   - {fileID: 4643713959438015313}
+  - {fileID: 9140656876775367235}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &6263623574870782097
@@ -140,13 +174,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 1.3
+  m_Height: 1.25
   m_Radius: 0.5
   m_SlopeLimit: 45
   m_StepOffset: 0.15
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0.15, z: 0}
+  m_Center: {x: 0, y: 0.05, z: 0}
 --- !u!114 &2859052393326274166
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,9 +217,63 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 934836c01a853f54c99e22931f527cee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cc: {fileID: 6263623574870782097}
+  rb: {fileID: 5898813734872821476}
+  physicsCollider: {fileID: 2256347455188751589}
   type: 0
   movement: {fileID: 2859052393326274166}
   cameraTarget: {fileID: 4643713959438015313}
+  holdPoint: {fileID: 9140656876775367235}
+--- !u!54 &5898813734872821476
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1991478928909361617}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
+--- !u!136 &2256347455188751589
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1991478928909361617}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 1
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4266047268080275323
 GameObject:
   m_ObjectHideFlags: 0
@@ -195,7 +283,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4643713959438015313}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: TorsoCameraTarget
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -228,7 +316,7 @@ GameObject:
   - component: {fileID: 4609879842111675236}
   - component: {fileID: 3307182467317387099}
   - component: {fileID: 8717500684028984111}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}

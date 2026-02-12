@@ -25,6 +25,22 @@ public class SplitBodyManager : MonoBehaviour
     [Header("Recombine")]
     [SerializeField] private float recombineDistance = 1.2f;
 
+    [Header("Pickup")]
+    [SerializeField] private Transform wholeHoldPoint;
+    [SerializeField] private float pickupDistance = 2.0f;
+    [SerializeField] private LayerMask grabbableMask;
+    [SerializeField] private Vector3 dropForwardOffset = new Vector3(0f, 0f, 1.0f);
+    [SerializeField] private float dropSideOffset = 0.6f;
+    [SerializeField] private float dropUpOffset = 0.2f;
+    [SerializeField] private float dropGroundRayHeight = 2.0f;
+    [SerializeField] private float dropGroundRayDistance = 6.0f;
+    [SerializeField] private LayerMask groundMask;
+    [SerializeField] private float dropIgnoreSeconds = 0.25f;
+
+
+    private ObjectGrabbable heldGrabbable;
+    private Rigidbody heldRb;
+
     private Vector3 _wholeCamLocalPos;
     private Quaternion _wholeCamLocalRot;
     private BodyHalf torsoInstance;
@@ -34,6 +50,12 @@ public class SplitBodyManager : MonoBehaviour
     private PlayerMovement CurrentMovement =>
         isSplit ? activeHalf?.movement : wholeMovement;
 
+    private bool IsCarryingLegs =>
+    heldGrabbable != null &&
+    heldGrabbable.TryGetComponent<BodyHalfCargo>(out var cargo) &&
+    cargo.Half.type == HalfType.Legs;
+
+
     private void OnSplit()
     {
         if (isSplit) return;
@@ -42,12 +64,14 @@ public class SplitBodyManager : MonoBehaviour
 
     private void OnSwap()
     {
+        if (IsCarryingLegs) return;
         if (!isSplit || torsoInstance == null || legsInstance == null) return;
         SwapControl();
     }
 
     private void OnCombine()
     {
+        if (IsCarryingLegs) return;
         if (!isSplit || torsoInstance == null || legsInstance == null) return;
         TryRecombine();
     }
@@ -127,8 +151,7 @@ public class SplitBodyManager : MonoBehaviour
 
         cinemachineCameraTarget.position = follow.position;
 
-        // TEMP DEBUG
-        Debug.Log($"Follow point: {follow.name} | camTarget pos: {cinemachineCameraTarget.position}");
+        //Debug.Log($"Follow point: {follow.name} | camTarget pos: {cinemachineCameraTarget.position}");
     }
 
 
@@ -194,6 +217,141 @@ public class SplitBodyManager : MonoBehaviour
         if (wholeMovement) wholeMovement.SyncLookFromTarget();
     }
 
+    private void TryPickUpGrabbable()
+    {
+        Transform hold = CurrentHoldPoint;
+        if (hold == null) return;
+
+        // Search around the currently controlled body
+        Vector3 origin = isSplit && activeHalf != null ? activeHalf.transform.position : transform.position;
+
+        Collider[] hits = Physics.OverlapSphere(origin, pickupDistance, grabbableMask, QueryTriggerInteraction.Ignore);
+        if (hits.Length == 0) return;
+
+        ObjectGrabbable best = null;
+        float bestD = float.MaxValue;
+
+        foreach (var h in hits)
+        {
+            ObjectGrabbable g = h.GetComponentInParent<ObjectGrabbable>();
+            if (g == null) continue;
+
+            float d = Vector3.Distance(origin, g.transform.position);
+            if (d < bestD)
+            {
+                bestD = d;
+                best = g;
+            }
+        }
+
+        if (best == null) return;
+
+        heldGrabbable = best;
+        heldRb = best.GetComponent<Rigidbody>();
+
+        // Snap once so it doesn’t “yo-yo” from where it was
+        if (heldRb != null)
+        {
+            heldRb.position = hold.position;
+            heldRb.rotation = hold.rotation;
+            heldRb.linearVelocity = Vector3.zero;
+            heldRb.angularVelocity = Vector3.zero;
+        }
+
+        heldGrabbable.Grab(hold);
+    }
+
+
+    private void DropHeld()
+    {
+        if (heldGrabbable == null) return;
+
+        Transform holdOwner = isSplit && activeHalf != null ? activeHalf.transform : transform;
+
+        // choose a safe desired position
+        Vector3 right = holdOwner.right;
+        Vector3 forward = holdOwner.forward;
+
+        Vector3 desired = holdOwner.position
+                        + forward * dropForwardOffset.z
+                        + right * dropSideOffset
+                        + Vector3.up * dropUpOffset;
+
+        // snap to ground
+        Vector3 rayStart = desired + Vector3.up * dropGroundRayHeight;
+        if (Physics.Raycast(rayStart, Vector3.down, out var hit, dropGroundRayDistance, groundMask, QueryTriggerInteraction.Ignore))
+            desired.y = hit.point.y + 0.05f;
+
+        // Temporarily ignore collisions between torso + legs on re-enable
+        if (isSplit && torsoInstance != null && heldGrabbable != null)
+            IgnoreCollisionTemporarily(torsoInstance.gameObject, heldGrabbable.gameObject, dropIgnoreSeconds);
+
+        // Move it OUT OF the player BEFORE enabling physics
+        if (heldRb != null)
+        {
+            heldRb.isKinematic = true;        // keep frozen during teleport
+            heldRb.detectCollisions = false;  // avoid depenetration on teleport
+            heldRb.position = desired;
+            heldRb.rotation = holdOwner.rotation;
+            heldRb.linearVelocity = Vector3.zero;
+            heldRb.angularVelocity = Vector3.zero;
+        }
+        else
+        {
+            heldGrabbable.transform.position = desired;
+            heldGrabbable.transform.rotation = holdOwner.rotation;
+        }
+
+        // NOW enable physics via Drop()
+        heldGrabbable.Drop();
+
+        // Re-apply who is active (prevents dropped half from stealing camera control)
+        if (isSplit && torsoInstance != null && legsInstance != null && activeHalf != null)
+        {
+            torsoInstance.SetActiveControl(activeHalf == torsoInstance);
+            legsInstance.SetActiveControl(activeHalf == legsInstance);
+
+            activeHalf.movement.SetCursorLocked(true);
+            activeHalf.movement.SyncLookFromTarget();
+        }
+
+        heldGrabbable = null;
+        heldRb = null;
+    }
+
+
+    private void IgnoreCollisionTemporarily(GameObject a, GameObject b, float seconds)
+    {
+        var aCols = a.GetComponentsInChildren<Collider>();
+        var bCols = b.GetComponentsInChildren<Collider>();
+
+        foreach (var c1 in aCols)
+            foreach (var c2 in bCols)
+                Physics.IgnoreCollision(c1, c2, true);
+
+        StartCoroutine(Reenable());
+
+        System.Collections.IEnumerator Reenable()
+        {
+            yield return new WaitForSeconds(seconds);
+            foreach (var c1 in aCols)
+                foreach (var c2 in bCols)
+                    if (c1 && c2) Physics.IgnoreCollision(c1, c2, false);
+        }
+    }
+
+
+    private Transform CurrentHoldPoint
+    {
+        get
+        {
+            if (isSplit && activeHalf != null)
+                return activeHalf.holdPoint != null ? activeHalf.holdPoint : activeHalf.transform;
+
+            return wholeHoldPoint != null ? wholeHoldPoint : transform;
+        }
+    }
+
 
     private void EnsureCameraTargetAssigned()
     {
@@ -230,19 +388,36 @@ public class SplitBodyManager : MonoBehaviour
 
     private void OnLookMouse(InputValue v)
     {
-        Debug.Log("LookMouse: " + v.Get<Vector2>());
-        CurrentMovement?.SetLookMouse(v.Get<Vector2>());
+        var val = v.Get<Vector2>();
+        Debug.Log("LOOK MOUSE INPUT: " + val);
+        CurrentMovement?.SetLookMouse(val);
     }
+
 
     private void OnLookStick(InputValue v)
     {
-        Debug.Log("LookStick: " + v.Get<Vector2>());
+        //Debug.Log("LookStick: " + v.Get<Vector2>());
         CurrentMovement?.SetLookStick(v.Get<Vector2>());
     }
-
 
     private void OnJump()
     {
         CurrentMovement?.QueueJump();
     }
+
+    private void OnPickUp()
+    {
+        if (heldGrabbable != null)
+        {
+            DropHeld();
+            return;
+        }
+
+        // Only torso can pick up legs
+        if (isSplit && activeHalf != null && activeHalf.type != HalfType.Torso) return;
+
+        TryPickUpGrabbable();
+    }
+
+
 }

@@ -104,6 +104,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleMovement()
     {
+        if (controller == null || !controller.enabled) return;
+
         groundedPlayer = controller.isGrounded;
 
         // Ground snap / stable grounding
@@ -155,6 +157,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleRotation()
     {
+        if (controller == null || !controller.enabled) return;
+
         if (currentMovement.sqrMagnitude > 0.0001f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(currentMovement, Vector3.up);
@@ -189,8 +193,6 @@ public class PlayerMovement : MonoBehaviour
         pitch = ClampAngle(pitch, bottomClamp, topClamp);
 
         cinemachineCameraTarget.rotation = Quaternion.Euler(pitch, yaw, 0f);
-
-        Debug.Log($"LOOK RUN: {name} canControl={canControl} yaw={yaw} pitch={pitch}");
     }
 
     public void SyncLookFromTarget()
